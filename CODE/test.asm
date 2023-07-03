@@ -20,12 +20,45 @@ CONTROLLER_1=   $4016
 CONTROLLER_2=   $4017
 APU_FRAMES  =   $4017
 
-;my variables
+
+	;my variables
 INPUT_TEMP  =   $00
 INPUT_1     =   $01
 INPUT_2     =   $02
 
+	;init
+INIT_DONE   =   $0a
+INIT_COUNT  =   $0b
+
+INIT_TEMP_0 =   $0c
+INIT_TEMP_1 =   $0d
+INIT_TEMP_2 =   $0e
+
 NAMETABLES  =   $0f
+
+GAME_MODE   =   $20	;$01 stephen, $02 hosuh, $12 stephen&hosuh, $21 hosuh&stephen
+
+PLAYER_1    =   $30
+TEMP_1      =   PLAYER_1 + $00
+
+X_1         =   PLAYER_1 + $04
+Y_1         =   PLAYER_1 + $05
+
+DIRECTION_1 =   PLAYER_1 + $06
+
+PALETTE_1_1 =   PLAYER_1 + $07
+PALETTE_1_2 =   PLAYER_1 + $08
+PALETTE_1_3 =   PLAYER_1 + $09
+
+SPRITES_1  =   PLAYER_1 + $0c
+
+PLAYER_2    =   $50
+TEMP_2      =   PLAYER_2 + $00
+
+SPRITES_2  =   PLAYER_2 + $0c
+
+	;sprites
+H_SPRITES   =   $01
 
 .segment "HEADER"
   ; .byte "NES", $1A      ; iNES header identifier
@@ -103,7 +136,7 @@ load_palletes:
  bne @loop
 
 enable_rendering:
- lda #%00000001 	;select nametables
+ lda #%00100001 	;select nametables
  sta NAMETABLES
  sta PPU_CTRL
  lda #%00011000
@@ -121,7 +154,176 @@ init_sound:
 
 ;████████████████████████████████████████████████████████████████
 
-game_loop:
+ lda #$01	;
+ sta GAME_MODE	;
+
+play_init:
+
+ lda GAME_MODE
+ and #$01
+ cmp #$01
+ beq @load_hosuh_1
+
+ lda GAME_MODE
+ and #$02
+ cmp #$02
+ beq @load_stephen_1
+
+ lda GAME_MODE
+ and #$10
+ cmp #$10
+ beq @load_hosuh_2
+
+ lda GAME_MODE
+ and #$20
+ cmp #$20
+ beq @load_stephen_2
+
+
+ @load_hosuh_1:
+ lda #$01
+ sta INIT_TEMP_0
+ sta INIT_TEMP_1
+ jsr load_character
+
+ jmp @end_load
+
+ @load_stephen_1:
+ lda #$02
+ sta INIT_TEMP_0
+ lda #$01
+ sta INIT_TEMP_1
+ jsr load_character
+
+ jmp @end_load
+
+ @load_hosuh_2:
+ lda #$01
+ sta INIT_TEMP_0
+ lda #$02
+ sta INIT_TEMP_1
+ jsr load_character
+
+ jmp @end_load
+
+ @load_stephen_2:
+ lda #$02
+ sta INIT_TEMP_0
+ sta INIT_TEMP_1
+ jsr load_character
+
+ jmp @end_load
+
+ @end_load:
+
+ jmp play_loop
+
+load_character:
+ lda INIT_TEMP_1	;load the sprites starting byte
+ cmp #$01
+ beq @player_1
+ cmp #$02
+ beq @player_2
+ 
+ @player_1:
+ lda #SPRITES_1
+
+ jmp @player_end
+ @player_2:
+ lda #SPRITES_2
+
+ jmp @player_end
+ @player_end:
+
+ tay
+ ldx #$00
+ 
+ lda INIT_TEMP_0
+ cmp #$01
+ beq @hosuh_loop
+ cmp #$02
+ beq @stephen_loop
+
+ @hosuh_loop:
+ stx INIT_TEMP_0
+ lda #H_SPRITES
+ clc
+ adc INIT_TEMP_0
+ sta $00, y
+
+ iny
+ inx
+ cpx #$04
+ bne @hosuh_loop
+ jmp @end_load
+
+ @stephen_loop:
+
+ inx
+ cpx #$04
+ bne @stephen_loop
+ jmp @end_load
+ @end_load:
+ 
+ rts
+
+;████████████████████████████████████████████████████████████████
+
+play_loop:
+
+ jsr controller
+
+ bit PPU_STATUS
+ bmi vBlankDo
+ 
+ jmp play_loop
+
+vBlankDo:
+ lda #$20	;player 1
+ sta OAM_ADDR
+ 
+ ldx #$00
+ sta TEMP_1
+ @player_1_loop:
+ lda TEMP_1
+ asl
+ asl
+ asl
+ asl
+ clc
+ adc Y_1
+ sta OAM_DATA
+
+ lda SPRITES_1, x
+ asl
+ sta OAM_DATA
+ 
+ lda #%00000011
+ sta OAM_DATA
+
+ txa
+ and #%0000001
+ asl
+ asl
+ asl
+ clc
+ adc X_1
+ sta OAM_DATA
+
+ txa
+ and #%0000001
+ cmp #%0000001
+ bne @not_increment_temp_y
+ inc TEMP_1
+ @not_increment_temp_y:
+ inx
+ cpx #$04
+ bne @player_1_loop
+
+ jmp play_loop
+
+
+;████████████████████████████████████████████████████████████████
 
 controller:
  lda #$01	;init controller 1
@@ -152,27 +354,23 @@ controller:
  lda INPUT_TEMP
  sta INPUT_2
 
- bit PPU_STATUS
- bmi vBlankDo
- 
- jmp game_loop
+ rts
 
-vBlankDo:
- jmp game_loop
+;████████████████████████████████████████████████████████████████
 
 nmi:
  rti
 
 ;████████████████████████████████████████████████████████████████
 
-;palletes and stuff
+	;palletes and stuff
 palletes:
-;oem sprites
- .byte $0f, $1d, $10, $20
+	;oem sprites
  .byte $0f, $03, $13, $23
  .byte $0f, $04, $14, $24
  .byte $0f, $06, $16, $26
-;background
+ .byte $0f, $00, $10, $20
+	;background
  .byte $2c, $04, $14, $34
  .byte $0f, $03, $13, $23
  .byte $0f, $04, $14, $24
@@ -205,3 +403,263 @@ music_notes:
   .byte %00001100
   .byte %00000000
 
+	;hosuh
+  .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00; BLANK
+
+  .byte %00000000; oxipital
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000011
+  .byte %00000111
+  .byte %00000111
+  .byte %00001011
+  .byte %00000000;
+  .byte %00000011
+  .byte %00000111
+  .byte %00001111
+  .byte %00001111
+  .byte %00001011
+  .byte %00000011
+  .byte %00000101
+
+  .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00; BLANK
+
+  .byte %00000000; forehead
+  .byte %00100000
+  .byte %01000000
+  .byte %00010100
+  .byte %00100100
+  .byte %11111000
+  .byte %10101000
+  .byte %10101000
+  .byte %11100000;
+  .byte %11010000
+  .byte %10111000
+  .byte %11101000
+  .byte %11011000
+  .byte %00100000
+  .byte %11110000
+  .byte %11110000
+
+  .byte %00000110; back
+  .byte %00000001
+  .byte %00000001
+  .byte %00000011
+  .byte %00000111
+  .byte %00001111
+  .byte %00001111
+  .byte %00001111
+  .byte %00011001;
+  .byte %00011100
+  .byte %00001100
+  .byte %00000000
+  .byte %00000011
+  .byte %00000111
+  .byte %00000110
+  .byte %00000101
+
+  .byte %00011111; back leg
+  .byte %00011111
+  .byte %00001111
+  .byte %00000111
+  .byte %00000111
+  .byte %00000111
+  .byte %00000111
+  .byte %00000011
+  .byte %00001101;
+  .byte %00001101
+  .byte %00000011
+  .byte %00000011
+  .byte %00000011
+  .byte %00000011
+  .byte %00000011
+  .byte %00000000
+
+  .byte %11111000; front
+  .byte %11110000
+  .byte %11100000
+  .byte %11000000
+  .byte %11100000
+  .byte %11100000
+  .byte %11110000
+  .byte %11111000
+  .byte %11110000;
+  .byte %01100000
+  .byte %10000000
+  .byte %10000000
+  .byte %11000000
+  .byte %11000000
+  .byte %11000000
+  .byte %11010000
+
+  .byte %11111000; front leg
+  .byte %11110000
+  .byte %11100000
+  .byte %11100000
+  .byte %11100000
+  .byte %11110000
+  .byte %11110000
+  .byte %11100000
+  .byte %11010000;
+  .byte %11000000
+  .byte %11000000
+  .byte %01000000
+  .byte %01000000
+  .byte %10100000
+  .byte %10100000
+  .byte %00000000
+
+  .byte %00001011; back for animation 1
+  .byte %00000001
+  .byte %00000001
+  .byte %00000011
+  .byte %00000111
+  .byte %00001111
+  .byte %00011111
+  .byte %00011111
+  .byte %00110101;
+  .byte %00111000
+  .byte %00011000
+  .byte %00000000
+  .byte %00000001
+  .byte %00000111
+  .byte %00001101
+  .byte %00001101
+
+  .byte %00111111; back leg for animation 1
+  .byte %00111111
+  .byte %00011111
+  .byte %00000111
+  .byte %00001111
+  .byte %00001111
+  .byte %00001111
+  .byte %00000110
+  .byte %00011011;
+  .byte %00011011
+  .byte %00000011
+  .byte %00000011
+  .byte %00000101
+  .byte %00000110
+  .byte %00000110
+  .byte %00000000
+
+  .byte %11111000; front for animation 1
+  .byte %11110000
+  .byte %11100000
+  .byte %11000000
+  .byte %11100000
+  .byte %11110000
+  .byte %11111100
+  .byte %11111110
+  .byte %11110000;
+  .byte %01100000
+  .byte %10000000
+  .byte %10000000
+  .byte %11000000
+  .byte %11100000
+  .byte %11110000
+  .byte %11011100
+
+  .byte %11111110; front leg for animation 1
+  .byte %11101100
+  .byte %11100000
+  .byte %11110000
+  .byte %11111000
+  .byte %11111000
+  .byte %11110000
+  .byte %01100000
+  .byte %11001100;
+  .byte %11000000
+  .byte %11000000
+  .byte %11000000
+  .byte %10110000
+  .byte %11110000
+  .byte %01100000
+  .byte %00000000
+
+  .byte %00001011; back for animation 2
+  .byte %00000001
+  .byte %00000001
+  .byte %00000011
+  .byte %00000111
+  .byte %00001111
+  .byte %00001111
+  .byte %00001111
+  .byte %00000101;
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000011
+  .byte %00000111
+  .byte %00000110
+  .byte %00000111
+
+  .byte %00000111; back leg for animation 2
+  .byte %00000111
+  .byte %00000111
+  .byte %00001111
+  .byte %00011111
+  .byte %00011111
+  .byte %00001111
+  .byte %00000110
+  .byte %00000011;
+  .byte %00000000
+  .byte %00000011
+  .byte %00000111
+  .byte %00001100
+  .byte %00001110
+  .byte %00000110
+  .byte %00000000
+
+  .byte %11111000; front for animation 2
+  .byte %11110000
+  .byte %11100000
+  .byte %11000000
+  .byte %11100000
+  .byte %11110000
+  .byte %11110000
+  .byte %11111000
+  .byte %11110000;
+  .byte %01100000
+  .byte %10000000
+  .byte %10000000
+  .byte %11000000
+  .byte %11100000
+  .byte %11100000
+  .byte %00100000
+
+  .byte %11111000; front leg for animation 2
+  .byte %11110000
+  .byte %11110000
+  .byte %11111100
+  .byte %11111110
+  .byte %01111110
+  .byte %00111100
+  .byte %00011000
+  .byte %11000000;
+  .byte %11000000
+  .byte %00100000
+  .byte %11100000
+  .byte %01101100
+  .byte %00111100
+  .byte %00011000
+  .byte %00000000
+
+
+  .byte %00000000; empty but in binary
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000;
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
+  .byte %00000000
