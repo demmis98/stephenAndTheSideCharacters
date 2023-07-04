@@ -40,22 +40,25 @@ GAME_MODE   =   $20	;$01 stephen, $02 hosuh, $12 stephen&hosuh, $21 hosuh&stephe
 
 PLAYER_1    =   $30
 TEMP_1      =   PLAYER_1 + $00
+WALK_STATE_1=   PLAYER_1 + $01
+WALK_COUNT_1=   PLAYER_1 + $02
 
 X_1         =   PLAYER_1 + $04
 Y_1         =   PLAYER_1 + $05
 
-DIRECTION_1 =   PLAYER_1 + $06
+DIRECTION_1 =   PLAYER_1 + $06	;$00 left, $01 right
 
 PALETTE_1_1 =   PLAYER_1 + $07
 PALETTE_1_2 =   PLAYER_1 + $08
 PALETTE_1_3 =   PLAYER_1 + $09
 
-SPRITES_1  =   PLAYER_1 + $0c
+SPRITES_1_C =   PLAYER_1 + $0c
+SPRITES_1_V =   PLAYER_1 + $10
 
 PLAYER_2    =   $50
 TEMP_2      =   PLAYER_2 + $00
 
-SPRITES_2  =   PLAYER_2 + $0c
+SPRITES_2_C  =   PLAYER_2 + $0c
 
 	;sprites
 H_SPRITES   =   $01
@@ -169,6 +172,25 @@ play_init:
  cmp #$02
  beq @load_stephen_1
 
+
+ @load_hosuh_1:
+ lda #$01
+ sta INIT_TEMP_0
+ sta INIT_TEMP_1
+ jsr load_character
+
+ jmp @end_load_1
+
+ @load_stephen_1:
+ lda #$02
+ sta INIT_TEMP_0
+ lda #$01
+ sta INIT_TEMP_1
+ jsr load_character
+
+ @end_load_1:
+
+
  lda GAME_MODE
  and #$10
  cmp #$10
@@ -179,24 +201,6 @@ play_init:
  cmp #$20
  beq @load_stephen_2
 
-
- @load_hosuh_1:
- lda #$01
- sta INIT_TEMP_0
- sta INIT_TEMP_1
- jsr load_character
-
- jmp @end_load
-
- @load_stephen_1:
- lda #$02
- sta INIT_TEMP_0
- lda #$01
- sta INIT_TEMP_1
- jsr load_character
-
- jmp @end_load
-
  @load_hosuh_2:
  lda #$01
  sta INIT_TEMP_0
@@ -204,7 +208,7 @@ play_init:
  sta INIT_TEMP_1
  jsr load_character
 
- jmp @end_load
+ jmp @end_load_2
 
  @load_stephen_2:
  lda #$02
@@ -212,11 +216,8 @@ play_init:
  sta INIT_TEMP_1
  jsr load_character
 
- jmp @end_load
-
- @end_load:
-
- jmp play_loop
+ @end_load_2:
+ jmp play_frame_do
 
 load_character:
  lda INIT_TEMP_1	;load the sprites starting byte
@@ -226,11 +227,11 @@ load_character:
  beq @player_2
  
  @player_1:
- lda #SPRITES_1
+ lda #SPRITES_1_C
 
  jmp @player_end
  @player_2:
- lda #SPRITES_2
+ lda #SPRITES_2_C
 
  jmp @player_end
  @player_end:
@@ -269,7 +270,70 @@ load_character:
 
 ;████████████████████████████████████████████████████████████████
 
+play_frame_do:
+
+	;process player 1
+ lda INPUT_1
+ cmp #%00000001
+ bne @not_right_1
+ inc X_1
+ lda #$01
+ sta DIRECTION_1
+ @not_right_1:
+
+ lda INPUT_1
+ cmp #%00000010
+ bne @not_left_1
+ dec X_1
+ lda #$00
+ sta DIRECTION_1
+ @not_left_1:
+
+
+;████████████████████████████████████████████████████████████████
+ 
 play_loop:
+
+;████████████████████████████████████████████████████████████████
+
+	;store sprites for p1
+ lda DIRECTION_1
+ cmp #$00
+ beq @flip_sprites_1
+ ldx #$00
+ @loop_not_flip_sprites_1:
+ lda SPRITES_1_C, x
+ sta SPRITES_1_V, x
+
+ inx
+ cpx #$04
+ bne @loop_not_flip_sprites_1
+ jmp @end_sprites_1
+ @flip_sprites_1:
+ ldx #$00
+ @loop_flip_sprites_1:
+	;flip if necesary
+ lda SPRITES_1_C, x
+ inx
+ sta SPRITES_1_V, x
+ lda SPRITES_1_C, x
+ dex
+ sta SPRITES_1_V, x
+ 
+ inx
+ inx
+ cpx #$04
+ bne @loop_flip_sprites_1
+ @end_sprites_1:
+
+;████████████████████████████████████████████████████████████████
+
+ lda GAME_MODE
+ and #$f0
+ cmp #$00
+ beq @not_player_2
+
+ @not_player_2:
 
  jsr controller
 
@@ -294,12 +358,22 @@ vBlankDo:
  adc Y_1
  sta OAM_DATA
 
- lda SPRITES_1, x
+ lda SPRITES_1_V, x
  asl
  sta OAM_DATA
  
- lda #%00000011
+ lda DIRECTION_1
+ asl
+ asl
+ asl
+ asl
+ asl
+ asl
+ clc
+ adc #%01000011
+ and #%01000011
  sta OAM_DATA
+ sta $80
 
  txa
  and #%0000001
@@ -320,7 +394,7 @@ vBlankDo:
  cpx #$04
  bne @player_1_loop
 
- jmp play_loop
+ jmp play_frame_do
 
 
 ;████████████████████████████████████████████████████████████████
