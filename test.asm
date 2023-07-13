@@ -183,7 +183,7 @@ play_init:
  sta PPU_CTRL
 
  ldx #$00
- @loop_level_base:
+ @loop_level_base_horizontal:
  lda #$01
  sta LEVEL_TILES,x
  sta LEVEL_TILES + $e0, x
@@ -195,8 +195,37 @@ play_init:
  sta LEVEL_TILES + $d0, x
  
  inx
- cpx #$10	;2 rows
- bne @loop_level_base
+ cpx #$10
+ bne @loop_level_base_horizontal
+
+ ldx #$01
+ @loop_level_base_vertical:
+ txa
+ asl
+ asl
+ asl
+ asl
+ tay
+
+ lda #$01
+ sta LEVEL_TILES,y
+ sta LEVEL_TILES + $0f, y
+
+ lda #$05
+ sta LEVEL_TILES + $01, y
+
+ lda #$04
+ sta LEVEL_TILES + $0e, y
+ 
+ inx
+ cpx #$0e
+ bne @loop_level_base_vertical
+ 
+ lda #$06
+ sta LEVEL_TILES + $11
+ sta LEVEL_TILES + $1e
+ sta LEVEL_TILES + $d1
+ sta LEVEL_TILES + $de
 
  lda LEVEL_MODE
 
@@ -276,6 +305,8 @@ play_init:
  cmp #$00
  bne @level_wait
  jmp @row
+
+ 
 
  @load_end:
 
@@ -588,15 +619,13 @@ music_notes:
  .byte $fd, $c9, $a9, $e1, $a9, $86
 
 tiles_u_l:
- .byte $00, B_SPRITES+$00, B_SPRITES+$01, B_SPRITES+$00
+ .byte $00, B_SPRITES+$00, B_SPRITES+$01, B_SPRITES+$00, B_SPRITES+$03, B_SPRITES+$00, B_SPRITES+$00
 tiles_u_r:
- .byte $00, B_SPRITES+$00, B_SPRITES+$01, B_SPRITES+$00
+ .byte $00, B_SPRITES+$00, B_SPRITES+$01, B_SPRITES+$00, B_SPRITES+$00, B_SPRITES+$04, B_SPRITES+$00
 tiles_d_l:
- .byte $00, B_SPRITES+$00, B_SPRITES+$00, B_SPRITES+$02
+ .byte $00, B_SPRITES+$00, B_SPRITES+$00, B_SPRITES+$02, B_SPRITES+$03, B_SPRITES+$00, B_SPRITES+$00
 tiles_d_r:
- .byte $00, B_SPRITES+$00, B_SPRITES+$00, B_SPRITES+$02
-tiles_pallete:
- .byte $00, $01
+ .byte $00, B_SPRITES+$00, B_SPRITES+$00, B_SPRITES+$02, B_SPRITES+$00, B_SPRITES+$04, B_SPRITES+$00
 
 ;████████████████████████████████████████████████████████████████
 
@@ -916,6 +945,40 @@ tiles_pallete:
   .byte %11111111
   .byte %01010101
   .byte %00000000
+
+  .byte %11001101; left of the floor
+  .byte %10010111
+  .byte %11001101
+  .byte %10010111
+  .byte %11001101
+  .byte %10010111
+  .byte %11001101
+  .byte %10010111
+  .byte %00111111;
+  .byte %01111111
+  .byte %00111111
+  .byte %01111111
+  .byte %00111111
+  .byte %01111111
+  .byte %00111111
+  .byte %01111111
+
+  .byte %11101001; right of the floor
+  .byte %10110011
+  .byte %11101001
+  .byte %10110011
+  .byte %11101001
+  .byte %10110011
+  .byte %11101001
+  .byte %10110011
+  .byte %11111110;
+  .byte %11111100
+  .byte %11111110
+  .byte %11111100
+  .byte %11111110
+  .byte %11111100
+  .byte %11111110
+  .byte %11111100
 
 
 
