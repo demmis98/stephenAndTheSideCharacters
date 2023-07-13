@@ -70,6 +70,7 @@ LEVEL_TEMP_2=   LEVEL + $02
 LEVEL_TEMP_3=   LEVEL + $03
 LEVEL_OFF_P =   LEVEL + $04	;pixels offset
 LEVEL_TILES =   LEVEL + $10
+LEVEL_TILES2=   LEVEL_TILES + $0100
 
 	;sprites
 H_SPRITES   =   $01	;hosuh
@@ -184,15 +185,12 @@ play_init:
 
  ldx #$00
  @loop_level_base_horizontal:
- lda #$01
- sta LEVEL_TILES,x
- sta LEVEL_TILES + $e0, x
 
  lda #$03
- sta LEVEL_TILES + $10, x
+ sta LEVEL_TILES + $00, x
 
  lda #$02
- sta LEVEL_TILES + $d0, x
+ sta LEVEL_TILES + $e0, x
  
  inx
  cpx #$10
@@ -207,25 +205,21 @@ play_init:
  asl
  tay
 
- lda #$01
- sta LEVEL_TILES,y
- sta LEVEL_TILES + $0f, y
-
  lda #$05
- sta LEVEL_TILES + $01, y
+ sta LEVEL_TILES + $00, y
 
  lda #$04
- sta LEVEL_TILES + $0e, y
+ sta LEVEL_TILES + $0f, y
  
  inx
  cpx #$0e
  bne @loop_level_base_vertical
  
  lda #$06
- sta LEVEL_TILES + $11
- sta LEVEL_TILES + $1e
- sta LEVEL_TILES + $d1
- sta LEVEL_TILES + $de
+ sta LEVEL_TILES + $00
+ sta LEVEL_TILES + $0f
+ sta LEVEL_TILES + $e0
+ sta LEVEL_TILES + $ef
 
  lda LEVEL_MODE
 
