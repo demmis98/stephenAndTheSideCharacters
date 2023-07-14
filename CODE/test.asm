@@ -48,20 +48,35 @@ WALK_COUNT_1=   PLAYER_1 + $02
 
 X_1         =   PLAYER_1 + $04
 Y_1         =   PLAYER_1 + $05
+X_SPEED_1   =   PLAYER_1 + $06
+Y_SPEED_1   =   PLAYER_1 + $07
+X_SPEED_MAX_1   =   PLAYER_1 + $08
 
-DIRECTION_1 =   PLAYER_1 + $06	;$00 left, $01 right
+DIRECTION_1 =   PLAYER_1 + $09	;$00 left, $01 right
 
-PALETTE_1_1 =   PLAYER_1 + $07
-PALETTE_1_2 =   PLAYER_1 + $08
-PALETTE_1_3 =   PLAYER_1 + $09
+PALETTE_1_1 =   PLAYER_1 + $0d
+PALETTE_1_2 =   PLAYER_1 + $0e
+PALETTE_1_3 =   PLAYER_1 + $0f
 
-SPRITES_1_C =   PLAYER_1 + $0c	;original
-SPRITES_1_V =   PLAYER_1 + $10	;flipped or not
+SPRITES_1_C =   PLAYER_1 + $10	;original
+SPRITES_1_V =   PLAYER_1 + $14	;flipped or not
 
 PLAYER_2    =   $50
 TEMP_2      =   PLAYER_2 + $00
 
 SPRITES_2_C =   PLAYER_2 + $0c
+
+COLLITIONS  =   $80
+C_TEMP      =   COLLITIONS + $00
+C_X_0       =   COLLITIONS + $01
+C_X_1       =   COLLITIONS + $02
+C_X_2       =   COLLITIONS + $03
+C_X_3       =   COLLITIONS + $04
+C_Y_0       =   COLLITIONS + $05
+C_Y_1       =   COLLITIONS + $06
+C_Y_2       =   COLLITIONS + $07
+C_Y_3       =   COLLITIONS + $08
+C_RESULT    =   COLLITIONS + $0a
 
 LEVEL       =   $f0
 LEVEL_TEMP  =   LEVEL + $00
@@ -423,23 +438,83 @@ load_character:
 
 play_frame_do:
 
+;████████████████████████████████████████████████████████████████
+
 	;process player 1
+ ldy #$02
  lda INPUT_1
+ and #%01000000
+ cmp #%01000000
+ bne @not_b_1
+ iny
+ iny
+ @not_b_1:
+ sty X_SPEED_MAX_1
+
+ lda #$00
+ sta TEMP_1
+
+ lda INPUT_1
+ and #%00000001
  cmp #%00000001
  bne @not_right_1
- inc X_1
  lda #$01
  sta DIRECTION_1
+ sta TEMP_1
  @not_right_1:
 
  lda INPUT_1
+ and #%00000010
  cmp #%00000010
  bne @not_left_1
- dec X_1
+ sta TEMP_1
  lda #$00
  sta DIRECTION_1
  @not_left_1:
 
+ 
+
+;████████████████████████████████████████████████████████████████
+
+ lda TEMP_1
+ cmp #$00
+ beq @not_moving
+ inc X_SPEED_1
+
+ lda X_SPEED_1	;max speed
+ clc
+ cmp X_SPEED_MAX_1
+ bcs @maxed_speed
+ inc X_SPEED_1
+ @maxed_speed:
+ @not_moving:
+
+ lda X_SPEED_1
+ cmp #$00
+ beq @x_speed_0
+ dec X_SPEED_1
+
+ @x_speed_0:
+
+ lda DIRECTION_1
+ ror
+ bcc @move_left
+ lda X_1
+ clc
+ adc X_SPEED_1
+ clc	;;;;;;;;;;;;;;;;;;;;
+ cmp #$e6	;;;;;;;;;;;;;;;;;;;;;;beta collitions
+ bcs @move_end	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ sta X_1
+
+ jmp @move_end
+ @move_left:
+ lda X_1
+ sec
+ sbc X_SPEED_1
+ sta X_1
+
+ @move_end:
 
 ;████████████████████████████████████████████████████████████████
  
@@ -584,6 +659,44 @@ controller:
  bcc @controller_loop_2
  lda INPUT_TEMP
  sta INPUT_2
+
+ rts
+
+;████████████████████████████████████████████████████████████████
+
+collition:
+ lda #$00
+ ldx C_X_0
+ clc
+ cpx C_X_3
+ bcs @1st
+ adc #$01
+ @1st:
+
+ ldx C_X_1
+ clc
+ cpx C_X_2
+ bcc @2nd
+ clc
+ adc #$02
+ @2nd:
+
+ ldx C_Y_0
+ clc
+ cpx C_Y_3
+ bcs @3rd
+ adc #$04
+ @3rd:
+
+ ldx C_Y_1
+ clc
+ cpx C_Y_2
+ bcc @4th
+ clc
+ adc #$08
+ @4th:
+
+ sta C_RESULT
 
  rts
 

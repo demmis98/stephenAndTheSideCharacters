@@ -16,8 +16,17 @@ references to other animation youtubers on the memory cards
 	recreyo
 
 paralax?
+	use oem sprites for the borders
 
-3 modes
+3 modes?
 	single screen
 	double screen
 	double looping screen
+
+maybe just select the minigame with on screen arrow buttons
+
+for collisions only store 2 corners
+
+use the 2 most significant bits of a tile for knowing if it is collidable
+
+move with speed rather than just inc the memory adress
