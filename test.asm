@@ -481,20 +481,14 @@ play_frame_do:
  beq @not_moving
  inc X_SPEED_1
 
- lda X_SPEED_1	;max speed
- clc
- cmp X_SPEED_MAX_1
- bcs @maxed_speed
- inc X_SPEED_1
- @maxed_speed:
+ jmp @first_move_loop
  @not_moving:
-
  lda X_SPEED_1
  cmp #$00
- beq @x_speed_0
+ beq @speed_1_not_0
  dec X_SPEED_1
-
- @x_speed_0:
+ @speed_1_not_0:
+ @first_move_loop:
 
  lda DIRECTION_1
  ror
@@ -519,6 +513,14 @@ play_frame_do:
 ;████████████████████████████████████████████████████████████████
  
 play_loop:
+
+	;important processing for player 1
+ clc
+ lda X_SPEED_1
+ cmp X_SPEED_MAX_1
+ bcc @not_max_speed_1
+ dec X_SPEED_1
+ @not_max_speed_1:
 
 ;████████████████████████████████████████████████████████████████
 
